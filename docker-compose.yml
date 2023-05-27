@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  metadata:
+    build:
+      context: ./metadata
+      dockerfile: ./metadata.dockerfile
+    deploy:
+      mode: replicated
+      replicas: 1
+    env_file:
+      - .env
+    ports:
+      - "80:3000"
