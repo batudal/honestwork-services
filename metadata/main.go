@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/gofiber/contrib/fibersentry"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -18,5 +18,9 @@ func main() {
 	app.Static("/metadata", "./genesis-metadata")
 	revenue_watcher := NewRevenueWatcher()
 	go revenue_watcher.WatchRevenues()
-	log.Fatal(app.Listen(":3000"))
+	app.Use(fibersentry.New(fibersentry.Config{
+		Repanic:         true,
+		WaitForDelivery: false,
+	}))
+	app.Listen(":3000")
 }

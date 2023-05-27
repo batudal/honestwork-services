@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/getsentry/sentry-go"
-	"github.com/honestworkdao/honestwork-services/deal/abi/hwescrow"
+	"github.com/honestworkdao/honestwork-services/rating/abi/hwescrow"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
