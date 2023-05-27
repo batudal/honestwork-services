@@ -124,7 +124,7 @@ func writeJSON(revenue Revenue) {
 				Value:     revenue.RevenueTier,
 			}}}
 	file, _ := json.MarshalIndent(data, "", " ")
-	_ = ioutil.WriteFile(fmt.Sprintf("./metadata/%v", revenue.TokenId), file, 0644)
+	_ = ioutil.WriteFile(fmt.Sprintf("./genesis-metadata/%v", revenue.TokenId), file, 0644)
 }
 
 func FetchTotalSupply() int {

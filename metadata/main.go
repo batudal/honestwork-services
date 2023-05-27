@@ -15,12 +15,8 @@ func main() {
 		AttachStacktrace: true,
 	})
 	app := fiber.New()
-	app.Static("/metadata", "./metadata")
+	app.Static("/metadata", "./genesis-metadata")
 	revenue_watcher := NewRevenueWatcher()
 	go revenue_watcher.WatchRevenues()
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, World!")
-	})
-
 	log.Fatal(app.Listen(":3000"))
 }
