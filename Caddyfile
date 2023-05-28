@@ -1,5 +1,5 @@
 {
-  email   takez0_o@pm.me
+	email takez0_o@pm.me
 }
 
 (static) {
@@ -21,9 +21,9 @@
 	}
 }
 
-api.honestwork.app:80 {
-  encode zstd gzip
-  import static
+api.honestwork.app {
+	encode zstd gzip
+	import static
 
 	reverse_proxy http://metadata:3000
 }
