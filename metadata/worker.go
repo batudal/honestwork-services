@@ -18,69 +18,67 @@ import (
 
 // todo: multichain
 
-type Metadata struct {
-	Name        string        `json:"name"`
-	Description string        `json:"description"`
-	Image       string        `json:"image"`
-	ExternalUrl string        `json:"external_url"`
-	Attributes  []interface{} `json:"attributes"`
-}
-
-type TierAttribute struct {
-	TraitType string `json:"trait_type"`
-	Value     int    `json:"value"`
-	MaxValue  int    `json:"max_value"`
-}
-
-type GrossRevenueAttribute struct {
-	TraitType string `json:"trait_type"`
-	Value     int    `json:"value"`
-}
-
-type RevenueTierAttribute struct {
-	TraitType string `json:"trait_type"`
-	Value     string `json:"value"`
-}
-
-type Revenue struct {
-	TokenId     int    `json:"token_id"`
-	Amount      int    `json:"amount"`
-	Tier        int    `json:"tier"`
-	RevenueTier string `json:"revenue_tier"`
-}
-
 type RevenueWatcher struct {
+	arbitrum_rpc *ethclient.Client
+	ethereum_rpc *ethclient.Client
 }
 
-func NewRevenueWatcher() *RevenueWatcher {
-	return &RevenueWatcher{}
+type IRevenueWatcher interface {
+	WatchRevenues()
+}
+
+func NewRevenueWatcher(ethereum_rpc *ethclient.Client, arbitrum_rpc *ethclient.Client) *RevenueWatcher {
+	return &RevenueWatcher{
+		arbitrum_rpc: arbitrum_rpc,
+		ethereum_rpc: ethereum_rpc,
+	}
 }
 
 func (r *RevenueWatcher) WatchRevenues() {
 	for {
-		fetchAllRevenues()
+		r.fetchAllRevenues()
 		time.Sleep(time.Duration(5) * time.Minute)
 	}
 }
 
-func fetchAllRevenues() {
-	total_supply := FetchTotalSupply()
+func (r *RevenueWatcher) fetchAllRevenues() {
+	total_supply, err := r.fetchTotalSupply()
+	if err != nil {
+		sentry.CaptureException(err)
+		return
+	}
 	for i := 1; i <= total_supply; i++ {
-		revenue := fetchRevenue(i)
-		writeJSON(revenue)
+		revenue, err := r.fetchRevenue(i)
+		if err != nil {
+			sentry.CaptureException(err)
+			continue
+		}
+		err = writeJSON(revenue)
+		if err != nil {
+			sentry.CaptureException(err)
+			continue
+		}
 	}
 }
 
-func fetchRevenue(token_id int) Revenue {
-	amount := FetchNFTRevenue(token_id)
-	tier := FetchTokenTier(token_id)
+func (r *RevenueWatcher) fetchRevenue(token_id int) (Revenue, error) {
+	amount, err := r.fetchNFTRevenue(token_id)
+	if err != nil {
+		sentry.CaptureException(err)
+		return Revenue{}, err
+	}
+	tier, err := r.fetchTokenTier(token_id)
+	if err != nil {
+		sentry.CaptureException(err)
+		return Revenue{}, err
+	}
 	revenue_tier := getRevenueTier(amount)
 	revenue := Revenue{
 		TokenId:     token_id,
 		Amount:      amount,
 		Tier:        tier,
 		RevenueTier: revenue_tier}
-	return revenue
+	return revenue, nil
 }
 
 func getRevenueTier(amount int) string {
@@ -101,7 +99,7 @@ func getRevenueTier(amount int) string {
 	}
 }
 
-func writeJSON(revenue Revenue) {
+func writeJSON(revenue Revenue) error {
 	data := Metadata{
 		Name:        "HonestWork #" + strconv.Itoa(revenue.TokenId),
 		Description: "Introducing HonestWork Genesis NFT - the ultimate freelancer membership to our platform. AI-generated visuals and 3 tiers to choose from make your NFT a unique key to unlock access to HonestWork features and benefits. What's more, HonestWork Genesis also records your revenue on the blockchain, enabling you to earn future airdrops based on your performance. Join HonestWork today and take your freelancing career to the next level!",
@@ -121,66 +119,63 @@ func writeJSON(revenue Revenue) {
 				TraitType: "Revenue Tier",
 				Value:     revenue.RevenueTier,
 			}}}
-	file, _ := json.MarshalIndent(data, "", " ")
-	err := ioutil.WriteFile(fmt.Sprintf("./genesis-metadata/%v", revenue.TokenId), file, 0644)
+	file, err := json.MarshalIndent(data, "", " ")
 	if err != nil {
 		sentry.CaptureException(err)
+		return err
 	}
+	err = ioutil.WriteFile(fmt.Sprintf("./genesis-metadata/%v", revenue.TokenId), file, 0644)
+	if err != nil {
+		sentry.CaptureException(err)
+		return err
+	}
+	return nil
 }
 
-func FetchTotalSupply() int {
-	client, err := ethclient.Dial(os.Getenv("ETH_RPC"))
-	if err != nil {
-		sentry.CaptureException(err)
-	}
+func (r *RevenueWatcher) fetchTotalSupply() (int, error) {
 	nft_address_hex := common.HexToAddress(os.Getenv("GENESIS_ADDRESS"))
-	instance, err := honestworknft.NewHonestworknft(nft_address_hex, client)
+	instance, err := honestworknft.NewHonestworknft(nft_address_hex, r.ethereum_rpc)
 	if err != nil {
 		sentry.CaptureException(err)
+		return 0, err
 	}
 	total_supply, err := instance.TotalSupply(nil)
 	if err != nil {
 		sentry.CaptureException(err)
+		return 0, err
 	}
-	client.Close()
-	return int(total_supply.Int64())
+	return int(total_supply.Int64()), nil
 }
 
-func FetchNFTRevenue(token_id int) int {
-	client, err := ethclient.Dial(os.Getenv("ARBITRUM_RPC"))
-	if err != nil {
-		sentry.CaptureException(err)
-	}
-	defer client.Close()
+func (r *RevenueWatcher) fetchNFTRevenue(token_id int) (int, error) {
 	registry_address_hex := common.HexToAddress(os.Getenv("REGISTRY_ADDRESS"))
-	instance, err := hwregistry.NewHwregistry(registry_address_hex, client)
+	instance, err := hwregistry.NewHwregistry(registry_address_hex, r.arbitrum_rpc)
 	if err != nil {
 		sentry.CaptureException(err)
+		return 0, err
 	}
 	revenue, err := instance.GetNFTGrossRevenue(nil, big.NewInt(int64(token_id)))
 	if err != nil {
 		sentry.CaptureException(err)
+		return 0, err
 	}
 	revenue_normalized := new(big.Int)
 	revenue_normalized.Div(revenue, big.NewInt(1000000000000000000))
-	return int(revenue_normalized.Int64())
+	return int(revenue_normalized.Int64()), nil
 }
 
-func FetchTokenTier(token_id int) int {
-	client, err := ethclient.Dial(os.Getenv("ETH_RPC"))
-	if err != nil {
-		sentry.CaptureException(err)
-	}
+func (r *RevenueWatcher) fetchTokenTier(token_id int) (int, error) {
 	nft_address_hex := common.HexToAddress(os.Getenv("GENESIS_ADDRESS"))
-	instance, err := honestworknft.NewHonestworknft(nft_address_hex, client)
+	instance, err := honestworknft.NewHonestworknft(nft_address_hex, r.ethereum_rpc)
 	if err != nil {
 		sentry.CaptureException(err)
+		return 0, err
 	}
 	token_id_big := big.NewInt(int64(token_id))
 	state, err := instance.GetTokenTier(nil, token_id_big)
 	if err != nil {
 		sentry.CaptureException(err)
+		return 0, err
 	}
-	client.Close()
-	return int(state.Int64())
+	return int(state.Int64()), nil
 }

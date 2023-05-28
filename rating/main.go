@@ -10,16 +10,24 @@ import (
 )
 
 func main() {
-	_ = sentry.Init(sentry.ClientOptions{
+	err := sentry.Init(sentry.ClientOptions{
 		Dsn:              os.Getenv("SENTRY_DSN"),
 		Debug:            true,
 		AttachStacktrace: true,
 	})
+	if err != nil {
+		panic(err)
+	}
 	defer sentry.Flush(2 * time.Second)
-	mongodb_client := NewMongoClient()
+	mongodb_client, err := NewMongoClient()
+	if err != nil {
+		sentry.CaptureException(err)
+		panic(err)
+	}
 	defer mongodb_client.Disconnect(context.Background())
 	rpc, err := ethclient.Dial(os.Getenv("ARBITRUM_RPC"))
 	if err != nil {
+		sentry.CaptureException(err)
 		panic(err)
 	}
 	rw := NewRatingWatcher(mongodb_client, rpc)
