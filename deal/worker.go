@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"time"
 
@@ -13,6 +12,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+// todo: test
 
 type DealWatcher struct {
 	mc  *mongo.Client
@@ -29,7 +30,7 @@ func NewDealWatcher(mc *mongo.Client, rpc *ethclient.Client) *DealWatcher {
 func (r *DealWatcher) WatchDeals() {
 	for {
 		updateDeals(r.mc, r.rpc)
-		time.Sleep(time.Duration(4) * time.Hour)
+		time.Sleep(time.Duration(1) * time.Hour)
 	}
 }
 
@@ -46,14 +47,10 @@ func updateDeals(mc *mongo.Client, rpc *ethclient.Client) {
 		return
 	}
 	if len(deals) == 0 {
-		log.Println("No deals found")
 		return
 	}
 	coll := mc.Database("honestwork-cluster").Collection("deals")
 	for i, deal := range deals {
-		log.Println("Deal recruiter:", deal.Recruiter.String())
-		log.Println("Deal creator:", deal.Creator.String())
-		log.Println("Deal job id:", deal.JobId.Int64())
 		job := Job{}
 		err = coll.FindOne(context.TODO(), bson.D{{"useraddress", deal.Recruiter.String()}, {"slot", int(deal.JobId.Int64())}}).Decode(&job)
 		if err != nil {

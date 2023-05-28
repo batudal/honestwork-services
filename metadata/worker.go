@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"os"
 	"strconv"
@@ -60,7 +59,6 @@ func NewRevenueWatcher() *RevenueWatcher {
 func (r *RevenueWatcher) WatchRevenues() {
 	for {
 		fetchAllRevenues()
-		log.Println("Fetched revenues and refreshed metadata")
 		time.Sleep(time.Duration(5) * time.Minute)
 	}
 }
