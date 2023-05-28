@@ -2,9 +2,7 @@ version: '3'
 
 services:
   metadata:
-    build:
-      context: ./metadata
-      dockerfile: ./metadata.dockerfile
+    image: takez0o/honestwork-metadata:0.0.1
     deploy:
       mode: replicated
       replicas: 1
@@ -12,6 +10,22 @@ services:
       - .env
     ports:
       - "80:3000"
+
+  deal:
+    image: takez0o/honestwork-deal:0.0.1
+    deploy:
+      mode: replicated
+      replicas: 1
+    env_file:
+      - .env
+
+  rating:
+    image: takez0o/honestwork-rating:0.0.1
+    deploy:
+      mode: replicated
+      replicas: 1
+    env_file:
+      - .env
 
   caddy:
     image: takez0o/honestwork-caddy:0.0.1
