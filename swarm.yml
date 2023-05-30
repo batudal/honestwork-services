@@ -12,6 +12,7 @@ services:
       - "3000:3000"
     volumes:
       - ./metadata/genesis-metadata/:/genesis-metadata/
+      - ./metadata/starter-metadata/:/starter-metadata/
 
   deal:
     image: takez0o/honestwork-deal:0.0.1
