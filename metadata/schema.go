@@ -8,6 +8,13 @@ type Metadata struct {
 	Attributes  []interface{} `json:"attributes"`
 }
 
+type StarterMetadata struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Image       string `json:"image"`
+	ExternalUrl string `json:"external_url"`
+}
+
 type TierAttribute struct {
 	TraitType string `json:"trait_type"`
 	Value     int    `json:"value"`

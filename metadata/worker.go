@@ -179,3 +179,23 @@ func (r *RevenueWatcher) fetchTokenTier(token_id int) (int, error) {
 	}
 	return int(state.Int64()), nil
 }
+
+func WriteStarterNFT() error {
+	data := StarterMetadata{
+		Name:        "HonestWork Starter NFT",
+		Description: "HonestWork Starter NFT",
+		Image:       "https://honestwork-userfiles.fra1.cdn.digitaloceanspaces.com/starter-nft/starter.gif",
+		ExternalUrl: "https://honestwork.app",
+	}
+	file, err := json.MarshalIndent(data, "", " ")
+	if err != nil {
+		sentry.CaptureException(err)
+		return err
+	}
+	err = ioutil.WriteFile(fmt.Sprintf("./starter-metadata/1"), file, 0644)
+	if err != nil {
+		sentry.CaptureException(err)
+		return err
+	}
+	return nil
+}

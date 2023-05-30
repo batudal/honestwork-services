@@ -20,6 +20,7 @@ func main() {
 	}
 	app := fiber.New()
 	app.Static("/metadata", "./genesis-metadata")
+	app.Static("/metadata/starter", "./starter-metadata")
 	ethereum_rpc, err := ethclient.Dial(os.Getenv("ETH_RPC"))
 	if err != nil {
 		sentry.CaptureException(err)
@@ -32,6 +33,7 @@ func main() {
 		panic(err)
 	}
 	defer arbitrum_rpc.Close()
+	go WriteStarterNFT()
 	revenue_watcher := NewRevenueWatcher(ethereum_rpc, arbitrum_rpc)
 	go revenue_watcher.WatchRevenues()
 	app.Use(fibersentry.New(fibersentry.Config{
