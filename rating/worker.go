@@ -94,37 +94,42 @@ func (r *RatingWatcher) FetchAllMembers() []string {
 }
 
 func (r *RatingWatcher) UpdateRating(address string) {
-	rating := r.FetchAggregatedRating(address)
+	rating, err := r.FetchAggregatedRating(address)
+	if err != nil {
+		sentry.CaptureException(err)
+		return
+	}
 	collection := r.mc.Database("honestwork-cluster").Collection("users")
 	filter := bson.D{{"address", address}}
 	update := bson.D{{"$set", bson.D{{"rating", rating}}}}
-	_, err := collection.UpdateOne(context.TODO(), filter, update)
+	_, err = collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		sentry.CaptureException(err)
+		return
 	}
 }
 
-func (r *RatingWatcher) FetchAggregatedRating(user_address string) float64 {
+func (r *RatingWatcher) FetchAggregatedRating(user_address string) (float64, error) {
 	var client *ethclient.Client
 	client, err := ethclient.Dial(os.Getenv("ARBITRUM_RPC"))
 	if err != nil {
-		sentry.CaptureException(err)
+		return 0, err
 	}
 	defer client.Close()
 	escrow_address_hex := common.HexToAddress(os.Getenv("ESCROW_ADDRESS"))
 	instance, err := hwescrow.NewHwescrow(escrow_address_hex, client)
 	if err != nil {
-		sentry.CaptureException(err)
+		return 0, err
 	}
 	user_address_hex := common.HexToAddress(user_address)
 	rating, err := instance.GetAggregatedRating(nil, user_address_hex)
 	if err != nil {
-		sentry.CaptureException(err)
+		return 0, err
 	}
 	precision, err := instance.GetPrecision(nil)
 	if err != nil {
-		sentry.CaptureException(err)
+		return 0, err
 	}
 	rating_normalized := float64(rating.Int64()) / float64(precision.Int64())
-	return rating_normalized
+	return rating_normalized, nil
 }
